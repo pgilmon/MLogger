@@ -49,6 +49,8 @@ public class LoggerService extends Service {
 	private static final String ACCEL_FILENAME = "accel_log.txt";
 //	private static final String LINEAR_ACCEL_FILENAME = "linear_accel_log.txt";
 
+	private static final String SEPARATOR = ";";
+	
 	public static boolean running;
 
 	private LocationListener locationListener;
@@ -74,11 +76,11 @@ public class LoggerService extends Service {
 			log.debug("Logging sensor data...");
 			StringBuilder sb = new StringBuilder();
 			sb.append(System.currentTimeMillis());
-			sb.append(",");
+			sb.append(SEPARATOR);
 			sb.append(arg0.values[0]);
-			sb.append(",");
+			sb.append(SEPARATOR);
 			sb.append(arg0.values[1]);
-			sb.append(",");
+			sb.append(SEPARATOR);
 			sb.append(arg0.values[2]);
 			writer.println(sb);
 		}
@@ -170,7 +172,11 @@ public class LoggerService extends Service {
 	private void logLocation(Location location){
 		StringBuilder sb = new StringBuilder();
 		sb.append(System.currentTimeMillis());
-		sb.append(",");
+		sb.append(SEPARATOR);
+		sb.append(location.getLatitude());
+		sb.append(SEPARATOR);
+		sb.append(location.getLongitude());
+		sb.append(SEPARATOR);
 		sb.append(location.getSpeed());
 		gpsWriter.println(sb);
 	}
