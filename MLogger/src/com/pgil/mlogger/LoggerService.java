@@ -1,7 +1,7 @@
 /*
     Copyright Pablo Gil Montano, 2012
-  
-    
+
+
     This file is part of MLogger.
 
     MLogger is free software: you can redistribute it and/or modify
@@ -40,6 +40,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
+import android.os.PowerManager;
 
 public class LoggerService extends Service {
 
@@ -47,29 +48,29 @@ public class LoggerService extends Service {
 
 	private static final String GPS_FILENAME = "gps_log.txt";
 	private static final String ACCEL_FILENAME = "accel_log.txt";
-//	private static final String LINEAR_ACCEL_FILENAME = "linear_accel_log.txt";
+	//	private static final String LINEAR_ACCEL_FILENAME = "linear_accel_log.txt";
 
 	private static final String SEPARATOR = ";";
-	
+
 	public static boolean running;
 
 	private LocationListener locationListener;
 	private LocationManager locationManager;
-	
+
 	private SensorManager sensorManager;
-	
-	
+
+
 	private static class SensorListener implements SensorEventListener{
 
 		private PrintWriter writer;
-		
+
 		public SensorListener(PrintWriter writer){
 			this.writer = writer;
 		}
-		
+
 		public void onAccuracyChanged(Sensor arg0, int arg1) {
 			log.debug("Accurracy changed: {}, {}", arg0, arg1);
-			
+
 		}
 
 		public void onSensorChanged(SensorEvent arg0) {
@@ -84,7 +85,7 @@ public class LoggerService extends Service {
 			sb.append(arg0.values[2]);
 			writer.println(sb);
 		}
-		
+
 	}
 
 	@Override
@@ -96,23 +97,30 @@ public class LoggerService extends Service {
 
 	private PrintWriter gpsWriter;
 	private PrintWriter accelWriter;
-//	private PrintWriter linearAccelWriter;
-	
+	//	private PrintWriter linearAccelWriter;
+
 	private Sensor accelSensor;
-//	private Sensor linearAccelSensor;
-	
+	//	private Sensor linearAccelSensor;
+
 	private SensorListener accelListener;
+
+	PowerManager pm;
+	PowerManager.WakeLock wl;
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 
+		if(pm == null){
+			pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+		}
 
 		// Acquire a reference to the system Location Manager
 		if(locationManager == null){
 			locationManager = (LocationManager) 
 					this.getSystemService(Context.LOCATION_SERVICE);
 		}
-
+		wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MLogger - sensor");
+		wl.acquire();
 		try {
 			openWriter();
 
@@ -140,17 +148,17 @@ public class LoggerService extends Service {
 			// Register the listener with the Location Manager to receive location updates
 			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
 			running = true;
-			
+
 			accelListener = new SensorListener(accelWriter);
-//			SensorListener linearAccelListener = new SensorListener(linearAccelWriter);
-			
+			//			SensorListener linearAccelListener = new SensorListener(linearAccelWriter);
+
 			if(sensorManager == null){
 				sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 				accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 			}
-			
+
 			sensorManager.registerListener(accelListener, accelSensor, SensorManager.SENSOR_DELAY_FASTEST);
-			
+
 		} 
 		catch (IOException e) {
 			log.error("Could not open file for logging", e);
@@ -166,7 +174,7 @@ public class LoggerService extends Service {
 		File sdFile = Environment.getExternalStorageDirectory();
 		gpsWriter = new PrintWriter(new FileWriter(new File(sdFile, GPS_FILENAME), true));
 		accelWriter = new PrintWriter(new FileWriter(new File(sdFile, ACCEL_FILENAME), true));
-//		linearAccelWriter = new PrintWriter(new FileWriter(new File(sdFile, LINEAR_ACCEL_FILENAME), true));
+		//		linearAccelWriter = new PrintWriter(new FileWriter(new File(sdFile, LINEAR_ACCEL_FILENAME), true));
 	}
 
 	private void logLocation(Location location){
@@ -184,11 +192,12 @@ public class LoggerService extends Service {
 	private void closeWriter(){
 		gpsWriter.close();
 		accelWriter.close();
-//		linearAccelWriter.close();
+		//		linearAccelWriter.close();
 	}
 
 	@Override
 	public void onDestroy() {
+		wl.release();
 		if(locationManager != null && locationListener != null){
 			locationManager.removeUpdates(locationListener);
 		}
